@@ -3421,7 +3421,7 @@ export default function TraineePortalPage({
                     </span>
                   </div>
                   <p className="text-xs text-slate-700 font-medium leading-relaxed italic">
-                    "{fb.comment}"
+                    &ldquo;{fb.comment}&rdquo;
                   </p>
                 </div>
               ))}

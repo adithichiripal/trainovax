@@ -1,157 +1,244 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { supabase } from '@/app/lib/supabase';
-import { Users, GraduationCap, Layers, Award, Sparkles, ArrowUpRight } from 'lucide-react';
+import React from "react";
+import {
+  Users,
+  GraduationCap,
+  CalendarCheck,
+  Award,
+  ArrowUpRight,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  BarChart,
+  Bar,
+} from "recharts";
 
-interface MetricState {
-  totalBatches: number;
-  totalTrainers: number;
-  totalTrainees: number;
-  avgScore: number;
-  topTrainer: string;
-  topTrainee: string;
-}
+const MODULE_PERFORMANCE_DATA = [
+  { module: "Data Structures", avgScore: 78, clearance: 88 },
+  { module: "Algorithms", avgScore: 84, clearance: 92 },
+  { module: "System Design", avgScore: 72, clearance: 80 },
+  { module: "Neural Networks", avgScore: 91, clearance: 96 },
+  { module: "Cloud Infra", avgScore: 86, clearance: 89 },
+];
 
-export default function DashboardOverview() {
-  const [metrics, setMetrics] = useState<MetricState>({
-    totalBatches: 0,
-    totalTrainers: 0,
-    totalTrainees: 0,
-    avgScore: 0,
-    topTrainer: 'Loading...',
-    topTrainee: 'Loading...',
-  });
-  const [loading, setLoading] = useState(true);
+const WEEKLY_TREND_DATA = [
+  { week: "W1", attendance: 95, submissions: 90 },
+  { week: "W2", attendance: 92, submissions: 88 },
+  { week: "W3", attendance: 89, submissions: 85 },
+  { week: "W4", attendance: 94, submissions: 92 },
+  { week: "W5", attendance: 91, submissions: 95 },
+  { week: "W6", attendance: 96, submissions: 98 },
+];
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [batchesRes, trainersRes, traineesRes] = await Promise.all([
-          supabase.from('batches').select('id', { count: 'exact' }),
-          supabase.from('trainers').select('id, is_trainer_of_the_month, profiles(full_name)'),
-          supabase.from('trainees').select('id, overall_score, is_trainee_of_the_month, profiles(full_name)'),
-        ]);
-
-        const rawTrainers = trainersRes.data || [];
-        const rawTrainees = traineesRes.data || [];
-
-        // Find spotlights
-        const topTrainerRecord = rawTrainers.find((t: Record<string, unknown>) => Boolean(t.is_trainer_of_the_month));
-        const topTraineeRecord = rawTrainees.find((tr: Record<string, unknown>) => Boolean(tr.is_trainee_of_the_month));
-
-        // Safely extract names
-        let trainerName = 'None Selected';
-        if (topTrainerRecord && topTrainerRecord.profiles) {
-          const profile = topTrainerRecord.profiles as unknown as { full_name?: string };
-          trainerName = profile.full_name || 'None Selected';
-        }
-
-        let traineeName = 'None Selected';
-        if (topTraineeRecord && topTraineeRecord.profiles) {
-          const profile = topTraineeRecord.profiles as unknown as { full_name?: string };
-          traineeName = profile.full_name || 'None Selected';
-        }
-
-        // Calculate average score
-        const scores = rawTrainees
-          .map((tr: Record<string, unknown>) => Number(tr.overall_score))
-          .filter((score: number) => !isNaN(score));
-
-        const avg = scores.length > 0
-          ? Number((scores.reduce((a: number, b: number) => a + b, 0) / scores.length).toFixed(1))
-          : 0;
-
-        setMetrics({
-          totalBatches: batchesRes.count || 0,
-          totalTrainers: rawTrainers.length,
-          totalTrainees: rawTrainees.length,
-          avgScore: avg,
-          topTrainer: trainerName,
-          topTrainee: traineeName,
-        });
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, []);
-
-  const stats = [
-    { label: 'Active Batches', value: metrics.totalBatches, icon: Layers, color: 'from-blue-500 to-sky-400' },
-    { label: 'Certified Trainers', value: metrics.totalTrainers, icon: Users, color: 'from-indigo-500 to-purple-400' },
-    { label: 'Enrolled Trainees', value: metrics.totalTrainees, icon: GraduationCap, color: 'from-teal-500 to-emerald-400' },
-    { label: 'Cohort Avg Score', value: `${metrics.avgScore}%`, icon: ArrowUpRight, color: 'from-amber-500 to-orange-400' },
-  ];
-
+export default function DashboardOverviewPage() {
   return (
-    <div className="space-y-8">
-      {/* Top Banner */}
-      <div className="relative overflow-hidden p-6 rounded-3xl bg-gradient-to-r from-sky-400/20 via-indigo-400/20 to-teal-400/20 border border-white/70 shadow-lg shadow-sky-500/5 backdrop-blur-md">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/70 border border-white text-xs font-semibold text-sky-700 mb-3 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Executive Talent Command</span>
+    <div className="space-y-8 pb-16">
+      {/* 1. Quick KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-5 rounded-3xl bg-white/80 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Avg Trainee Score
+            </span>
+            <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs inline-flex items-center">
+              +4.2% <ArrowUpRight className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Talent Velocity & Analytics</h1>
-          <p className="text-sm text-slate-600 mt-1">Real-time telemetry across training cohorts, staff allocation, and skill milestones.</p>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
+          <p className="text-2xl font-black text-slate-900 mt-2">84.6%</p>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
             <div
-              key={i}
-              className="p-5 rounded-2xl bg-white/60 border border-white/80 backdrop-blur-lg shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">{stat.label}</span>
-                <div className={`p-2 rounded-xl bg-gradient-to-tr ${stat.color} text-white shadow-sm`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl font-extrabold text-slate-800 mt-3">
-                {loading ? '...' : stat.value}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Spotlight Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top Trainer */}
-        <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/80 backdrop-blur-md shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/30">
-              <Award className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Trainer of the Month</h3>
-              <p className="text-xs text-slate-500">Highest rated mentor</p>
-            </div>
+              className="bg-emerald-500 h-full rounded-full"
+              style={{ width: "84.6%" }}
+            />
           </div>
-          <p className="text-xl font-extrabold text-indigo-900">{loading ? '...' : metrics.topTrainer}</p>
         </div>
 
-        {/* Top Trainee */}
-        <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-white/80 backdrop-blur-md shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-500/30">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Trainee of the Month</h3>
-              <p className="text-xs text-slate-500">Highest overall cohort score</p>
-            </div>
+        <div className="p-5 rounded-3xl bg-white/80 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Attendance Rate
+            </span>
+            <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs">
+              Target: 85%
+            </span>
           </div>
-          <p className="text-xl font-extrabold text-emerald-900">{loading ? '...' : metrics.topTrainee}</p>
+          <p className="text-2xl font-black text-slate-900 mt-2">91.8%</p>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
+            <div
+              className="bg-blue-600 h-full rounded-full"
+              style={{ width: "91.8%" }}
+            />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white/80 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Assignment Clearance
+            </span>
+            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-xs">
+              Active
+            </span>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2">142 / 160</p>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
+            <div
+              className="bg-indigo-600 h-full rounded-full"
+              style={{ width: "88.7%" }}
+            />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-3xl bg-white/80 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Trainer Efficacy
+            </span>
+            <span className="p-1.5 rounded-lg bg-amber-50 text-amber-600 font-bold text-xs">
+              Top Tier
+            </span>
+          </div>
+          <p className="text-2xl font-black text-slate-900 mt-2">4.85 / 5.0</p>
+          <div className="w-full bg-slate-100 h-2 rounded-full mt-3 overflow-hidden">
+            <div
+              className="bg-amber-500 h-full rounded-full"
+              style={{ width: "97%" }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Visual Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Module Performance Area Chart */}
+        <div className="p-6 rounded-3xl bg-white/80 border border-slate-200 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
+              Module Performance &amp; Clearance Rates
+            </h3>
+            <p className="text-xs text-slate-500">
+              Average assessment score by subject
+            </p>
+          </div>
+          <div className="h-64 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={MODULE_PERFORMANCE_DATA}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient
+                    id="scoreGradient"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f1f5f9"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="module"
+                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#fff",
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "12px",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="avgScore"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#scoreGradient)"
+                  name="Avg Score (%)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Weekly Attendance vs Submissions Bar Chart */}
+        <div className="p-6 rounded-3xl bg-white/80 border border-slate-200 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
+              Weekly Engagement Trend
+            </h3>
+            <p className="text-xs text-slate-500">
+              Attendance consistency vs timely assignment submissions
+            </p>
+          </div>
+          <div className="h-64 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={WEEKLY_TREND_DATA}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f1f5f9"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="week"
+                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "12px",
+                  }}
+                />
+                <Bar
+                  dataKey="attendance"
+                  fill="#3b82f6"
+                  radius={[6, 6, 0, 0]}
+                  name="Attendance %"
+                />
+                <Bar
+                  dataKey="submissions"
+                  fill="#10b981"
+                  radius={[6, 6, 0, 0]}
+                  name="Submissions %"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
